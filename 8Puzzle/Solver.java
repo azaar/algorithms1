@@ -1,14 +1,42 @@
-import edu.princeton.cs.algs4.*;
+/****************************************************************************
+ *  Compilation:  javac Solver.java
+ *  Execution:    java Solver input.txt
+ *  Dependencies: Board.java, algs4.jar
+ *
+ * Solver for the 8-puzzle problem.
+ * This implementation uses the A* search algorithm with Manhattan priority
+ * function.
+ *
+ ****************************************************************************/
+
+/**
+ *
+ * @author Maxim Butyrin
+ *
+ */
+
+import edu.princeton.cs.algs4.MinPQ;
+import edu.princeton.cs.algs4.Stack;
+import edu.princeton.cs.algs4.In;
+import edu.princeton.cs.algs4.StdOut;
+
 
 public class Solver {
 
-    private SearchNode resultNode;
     private boolean solvable;
+    private SearchNode resultNode;
+    private Stack<Board> solution;
 
-    private class SearchNode implements Comparable<SearchNode>{
+    /*
+     * Private data structure that tracks and store information about priority
+     * and number of moves.
+     */
+    private class SearchNode implements Comparable<SearchNode> {
+
         private final Board board;
         private final int moves;
-        private final int priority;
+        private final int priorityManhattan;
+        private final int priorityHamming;
         private final SearchNode parent;
 
         public SearchNode(Board board) {
@@ -25,26 +53,38 @@ public class Solver {
                 moves =  parent.moves + 1;
             }
 
-            priority = board.manhattan() + moves;
+            priorityManhattan = board.manhattan() + moves;
+            priorityHamming = board.hamming() + moves;
 
         }
 
-
+        /*
+         * Defines SearchNode ordering by Manhattan priority function;
+         * ties are solved by Hamming priority function.
+         */
         @Override
         public int compareTo(SearchNode that) {
-            if (this.priority < that.priority) {
+            if (this.priorityManhattan < that.priorityManhattan) {
                 return -1;
             }
-            if (this.priority == that.priority) {
-                return this.board.hamming() < that.board.hamming() ? -1 :
-                        this.board.hamming() == that.board.hamming() ? 0 : 1;
+            if (this.priorityManhattan == that.priorityManhattan) {
+                return this.priorityHamming < that.priorityHamming ? -1 :
+                        this.priorityHamming == that.priorityHamming ? 0 : 1;
             }
             return 1;
         }
     }
 
-    // find a solution to the initial board (using the A* algorithm)
+
+    /**
+     * Constructs the Solver and finds a solution to the initial board
+     * using the A* algorithm
+     *
+     * @param initial board for solving
+     */
     public Solver(Board initial) {
+
+        solution = new Stack<>();
 
         MinPQ<SearchNode> originPQ = new MinPQ<>();
         MinPQ<SearchNode> twinPQ = new MinPQ<>();
@@ -54,57 +94,84 @@ public class Solver {
 
         originPQ.insert(currentNode);
         twinPQ.insert(currentTwin);
+        Board prevBoard;
 
-        while(!currentNode.board.isGoal() && !currentTwin.board.isGoal()){
+        while (!currentNode.board.isGoal() && !currentTwin.board.isGoal()) {
 
             currentNode = originPQ.delMin();
             currentTwin = twinPQ.delMin();
 
-            for(Board board : currentNode.board.neighbors()) {
-                if(!board.equals(currentNode.board))
+            if (currentNode.parent == null) {
+                prevBoard = null;
+            } else {
+                prevBoard = currentNode.parent.board;
+            }
+
+            for (Board board : currentNode.board.neighbors()) {
+                if (!board.equals(prevBoard))
                     originPQ.insert(new SearchNode(board, currentNode));
             }
 
-            for(Board board : currentTwin.board.neighbors()) {
-                if(!board.equals(currentNode.board))
+            if (currentTwin.parent == null) {
+                prevBoard = null;
+            } else {
+                prevBoard = currentTwin.parent.board;
+            }
+
+            for (Board board : currentTwin.board.neighbors()) {
+                if (!board.equals(prevBoard))
                     twinPQ.insert(new SearchNode(board, currentTwin));
             }
         }
 
         if (currentNode.board.isGoal()) {
-            resultNode = currentNode;
             solvable = true;
+            resultNode = currentNode;
+            solution.push(currentNode.board);
+            while (currentNode.parent != null) {
+                currentNode = currentNode.parent;
+                solution.push(currentNode.board);
+            }
+
         } else {
-            resultNode = currentTwin;
             solvable = false;
         }
 
+
     }
 
-    // is the initial board solvable?
+    /**
+     * Checks if this board is solvable.
+     *
+     * @return true  if board is solvable
+     *         false otherwise
+     */
     public boolean isSolvable() {
         return solvable;
     }
 
-    // min number of moves to solve initial board; -1 if unsolvable
+    /**
+     * Returns the minimum number of moves to solve the initial board
+     * or -1 if board is unsolvable.
+     *
+     * @return int minimum number of moves to solve the initial board
+     */
     public int moves() {
         if (isSolvable()) {
-           return resultNode.moves;
+            return resultNode.moves;
         }
         return -1;
     }
 
-    // sequence of boards in a shortest solution; null if unsolvable
+    /**
+     * Returns the sequence of Boards from the initial board to the solution.
+     * Returns null if initial board unsolvable.
+     *
+     * @return Iterable object to loop through the solution chain
+     */
     public Iterable<Board> solution() {
         if (!isSolvable()) {
             return null;
-        }
-
-        Queue<Board> solution = new Queue<Board>();
-        solution.enqueue(resultNode.board);
-        while (resultNode.parent != null){
-            resultNode = resultNode.parent;
-            solution.enqueue(resultNode.board);
         }
         return solution;
     }
@@ -134,4 +201,3 @@ public class Solver {
         }
     }
 }
-
