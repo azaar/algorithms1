@@ -139,7 +139,13 @@ public class PointSET {
 
     // unit testing of the methods (optional)
     public static void main(String[] args) {
+        Point2D a = new Point2D(0, 0);
+        Point2D b = new Point2D(0, 0.11);
+        Point2D c = new Point2D(0, 0.12);
+        PointSET s = new PointSET();
+        s.insert(b);
+        s.insert(c);
+        System.out.println(s.nearest(a));
 
     }
 }
-
